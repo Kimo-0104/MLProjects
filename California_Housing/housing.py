@@ -4,6 +4,8 @@ from pandas.plotting import scatter_matrix
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 from sklearn.linear_model import LinearRegression
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
 def load_data():
     return pd.read_csv('housing/housing.csv')
 class DisplayData:
@@ -90,8 +92,8 @@ def split_data_stratified(df):
     split = StratifiedShuffleSplit(n_splits=1,test_size=0.2, random_state=0)
     #The split method in split generates indicies to split the data into training and test set.
     for train_idx, test_idx in split.split(df,df['income_cat']):
-        strat_train_set = housing.loc[train_idx]
-        strat_test_set = housing.loc[test_idx]
+        strat_train_set = df.loc[train_idx]
+        strat_test_set = df.loc[test_idx]
     '''
     #Now we see that this test set follows the same distribution as our population
     strat_test_set['income_cat'].hist()
@@ -121,24 +123,24 @@ def encode_categorical_column(series):
     which isnt the case for all of cases. is fine for cases such as "bad,average,good,excellent"
     Fix: one hot encoding
     '''
-    from sklearn.preprocessing import OneHotEncoder
+    
     oneHotEncoder = OneHotEncoder()
     oneHotEncodedSeries = oneHotEncoder.fit_transform(series)
     return oneHotEncodedSeries
 
 def clean_data(df):
-    from sklearn.impute import SimpleImputer
     #imputer class will replace all missing values with the median of that column
     imputer = SimpleImputer(strategy='median')
     #We remove the ocean_proximity column as its non-numerical so we cant compute its median
     #Make it a dataframe so encoding it works, needs 2d shape
-    ocean=df[['ocean_proximity']]
+    ocean=df['ocean_proximity']
     numericDf=df.drop('ocean_proximity',axis=1)
     #Using the imputer transform method to replace all the missing values with the median of that column
     #Note: the imputer transform method returns a numpy array hence we need to convert it back to a dataframe
     imputer.fit(numericDf)
     X=imputer.transform(numericDf)
     cleanedDf = pd.DataFrame(X,columns=numericDf.columns,index=numericDf.index)
+    cleanedDf['ocean_proximity']=ocean
     #cleanedDf['ocean_proximity']=encode_categorical_column(ocean)
     return cleanedDf
 
@@ -149,11 +151,41 @@ def split_into_features_labels(train,test):
     yTest = test['median_house_value']
     return XTrain,yTrain,XTest,yTest
 
+def pipeline(df):
+    '''
+    Whats a pipeline? Its a sequence of data science components. Instead of sending the data to the clean_data function
+    then sending the single column to encode_categorical_column function we can do all that in one function using a pipeline
+    by specifying what transformation we want to be applied on certain columns of our data. The pipeline will apply each transformer
+    to the appropriate column and concatenates the outputs along the second axis
+    '''
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+    num_pipeline = Pipeline([('imputer',SimpleImputer(strategy='median')),
+                            ('std_scaler',StandardScaler())                                           
+                            ])
+    numerical_features=list(df.drop("ocean_proximity",axis=1))
+    categorical_features = ['ocean_proximity']
+    from sklearn.compose import ColumnTransformer
+    full_pipeline = ColumnTransformer([("num",num_pipeline,numerical_features),("cat",OneHotEncoder(),categorical_features)])
+    
+    final = full_pipeline.fit_transform(df)
+    return final,full_pipeline
 if __name__ == '__main__':
-    housing = load_data()
-    dataInfo = DisplayData(housing)
-    train,test = split_data_stratified(housing)
-    train = clean_data(train)
-    Xtrain,yTrain,Xtest,yTest = split_into_features_labels(train,test)
+    df = load_data()
+    dataInfo = DisplayData(df)
+
+    strat_train_set, strat_test_set = split_data_stratified(df)
+
+    housing = strat_train_set.drop("median_house_value", axis=1) 
+    housing_labels = strat_train_set["median_house_value"].copy()
+
+    housing_prepared,full_pipeline = pipeline(housing)
+
     regressor = LinearRegression()
-    regressor.fit(Xtrain,yTrain)
+    regressor.fit(housing_prepared,housing_labels)
+
+    some_data = housing.iloc[:5]
+    some_labels = housing_labels.iloc[:5]
+    some_prepared_data = full_pipeline.transform(some_data)
+
+    print(regressor.predict(some_prepared_data))
