@@ -6,6 +6,9 @@ from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 from sklearn.linear_model import LinearRegression
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import cross_val_score
+from sklearn.tree import DecisionTreeRegressor
 def load_data():
     return pd.read_csv('housing/housing.csv')
 class DisplayData:
@@ -170,6 +173,46 @@ def pipeline(df):
     
     final = full_pipeline.fit_transform(df)
     return final,full_pipeline
+
+def Overfitting_Linear_Regression(housing_prepared,housing_labels):
+    regressor = LinearRegression()
+    regressor.fit(housing_prepared,housing_labels)
+    '''
+    some_data = housing.iloc[:5]
+    some_labels = housing_labels.iloc[:5]
+    some_prepared_data = full_pipeline.transform(some_data)
+    #print(regressor.predict(some_prepared_data))
+    '''
+    house_predictions = regressor.predict(housing_prepared)
+    mse = mean_squared_error(housing_labels,house_predictions)
+    mse = np.sqrt(mse)
+    print("Mean Squared Error from linear regression when overfitting: {}".format(mse))
+
+def Overfitting_DecisionTree_Regresssion(housing_prepared,housing_labels):
+    treeRegressor = DecisionTreeRegressor()
+    treeRegressor.fit(housing_prepared,housing_labels)
+    house_predictions = treeRegressor.predict(housing_prepared)
+    mse = mean_squared_error(housing_labels,house_predictions)
+    mse = np.sqrt(mse)
+    print("Mean Squared Error from decision tree regression when overfitting: {}".format(mse))
+
+def LinReg_w_kfoldVal(housing_prepared,housing_labels):
+    '''
+    Linear regression evalutated with kfold cross validation
+    '''
+    regressor = LinearRegression()
+    scores = cross_val_score(regressor,housing_prepared,housing_labels,scoring='neg_mean_squared_error',cv=10)
+    scores = np.sqrt(-scores)
+    print("Mean Squared Error from Linear regression with Kfold Cross validation: {}".format(scores.mean()))
+def DecisionTree_w_kfoldVal(housing_prepared,housing_labels):
+    '''
+    Linear regression evalutated with kfold cross validation
+    '''
+    regressor = DecisionTreeRegressor()
+    scores = cross_val_score(regressor,housing_prepared,housing_labels,scoring='neg_mean_squared_error',cv=10)
+    scores = np.sqrt(-scores)
+    print("Mean Squared Error from Decision tree regression with Kfold Cross validation: {}".format(scores.mean()))
+
 if __name__ == '__main__':
     df = load_data()
     dataInfo = DisplayData(df)
@@ -181,11 +224,8 @@ if __name__ == '__main__':
 
     housing_prepared,full_pipeline = pipeline(housing)
 
-    regressor = LinearRegression()
-    regressor.fit(housing_prepared,housing_labels)
-
-    some_data = housing.iloc[:5]
-    some_labels = housing_labels.iloc[:5]
-    some_prepared_data = full_pipeline.transform(some_data)
-
-    print(regressor.predict(some_prepared_data))
+    Overfitting_Linear_Regression(housing_prepared,housing_labels)
+    Overfitting_DecisionTree_Regresssion(housing_prepared,housing_labels)
+    LinReg_w_kfoldVal(housing_prepared,housing_labels)
+    DecisionTree_w_kfoldVal(housing_prepared,housing_labels)
+    #We see that the decision tree regressor was overfitting,alot 
