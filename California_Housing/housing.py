@@ -213,10 +213,32 @@ def DecisionTree_w_kfoldVal(housing_prepared,housing_labels):
     scores = np.sqrt(-scores)
     print("Mean Squared Error from Decision tree regression with Kfold Cross validation: {}".format(scores.mean()))
 
+def forest_regressor_gridSearch(housing_prepared,housing_labels):
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.ensemble import RandomForestRegressor
+    param_grid = [
+                    {'n_estimators': [3, 10, 30], 'max_features': [2, 4, 6, 8]},
+                    {'bootstrap': [False], 'n_estimators': [3, 10], 'max_features': [2, 3, 4]},
+                ]
+    regressor = RandomForestRegressor()
+    search = GridSearchCV(regressor,param_grid,cv=5,scoring='neg_mean_squared_error',return_train_score=True)
+    search.fit(housing_prepared,housing_labels)
+    print(search.best_params_)
+
+def support_vector_machine_regressor(housing_prepared,housing_labels):
+    from sklearn.svm import SVR
+    regressor = SVR(kernel='linear')
+    regressor.fit(housing_prepared,housing_labels)
+    predictions = regressor.predict(housing_prepared)
+    mse = mean_squared_error(housing_labels,predictions)
+    mse = np.sqrt(mse)
+    print("Mean Squared Error from SVR on training set: {}".format(mse))
+
+
 if __name__ == '__main__':
     df = load_data()
     dataInfo = DisplayData(df)
-
+    #dataInfo.scatter_mattrix()
     strat_train_set, strat_test_set = split_data_stratified(df)
 
     housing = strat_train_set.drop("median_house_value", axis=1) 
@@ -229,3 +251,5 @@ if __name__ == '__main__':
     LinReg_w_kfoldVal(housing_prepared,housing_labels)
     DecisionTree_w_kfoldVal(housing_prepared,housing_labels)
     #We see that the decision tree regressor was overfitting,alot 
+    support_vector_machine_regressor(housing_prepared,housing_labels)
+    #forest_regressor_gridSearch(housing_prepared,housing_labels)
