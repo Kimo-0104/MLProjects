@@ -22,18 +22,18 @@ print("Score using linear SVM: ",cross_val_score(svm_classifier,features,target,
 poly_svm_classifer = Pipeline([
     ('poly',PolynomialFeatures(degree=3)),
     ('std',StandardScaler()),
-    ('SVC',LinearSVC(C=10,loss='hinge'))
+    ('SVC',LinearSVC(C=10,loss='hinge',max_iter=10000))
 ])
 
 poly_svm_classifer.fit(features,target)
 #96%
-print("Score using polynomial SVM: ",cross_val_score(poly_svm_classifer,features,target,cv=3,verbose=3).mean())
+print("Score using polynomial SVM: ",cross_val_score(poly_svm_classifer,features,target,cv=3).mean())
 
 from sklearn.svm import SVC
 svm_classifier2 = Pipeline([
     ('std',StandardScaler()),
-    ('SVC',SVC(C=5,kernel='poly',degree=3,coef0=1))
+    ('SVC',SVC(kernel='rbf',gamma=5,C=0.001))
 ])
 
 svm_classifier2.fit(features,target)
-print("Score using polynomial SVM: ",cross_val_score(poly_svm_classifer,features,target,cv=3,verbose=3).mean())
+print("Score using RBF SVM: ",cross_val_score(poly_svm_classifer,features,target,cv=3).mean())
